@@ -1,0 +1,31 @@
+# Price Tracker UI Requirements
+
+# UI Framework
+streamlit>=1.29.0
+
+# Data Processing
+pandas>=2.0.0
+
+# Visualization
+plotly>=5.18.0
+
+# Parent modules (for development)
+# Uncomment these if installing in development mode
+# -e ../vn_gold_tracker
+# -e ../silver_scraper
+# -e ../international_metals
+
+# Dependencies from parent modules
+vnstock>=0.3.0
+requests>=2.31.0
+beautifulsoup4>=4.12.0
+lxml>=4.9.0
+yfinance>=0.2.28
+
+# Database (from vn_gold_tracker)
+psycopg2-binary>=2.9.0
+sqlalchemy>=2.0.0
+
+# Utilities
+python-dateutil>=2.8.0
+pytz>=2023.3

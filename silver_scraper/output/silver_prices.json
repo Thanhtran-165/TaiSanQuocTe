@@ -1,0 +1,50 @@
+{
+  "source": "https://giabac.phuquygroup.vn",
+  "update_time": "08:12 03/01/2026",
+  "scraped_at": "2026-01-03 13:40:25",
+  "prices": [
+    {
+      "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
+      "product": "BẠC MIẾNG PHÚ QUÝ 999 1 LƯỢNG",
+      "unit": "Vnđ/Lượng",
+      "buy_price": "2,738,000",
+      "sell_price": "2,823,000"
+    },
+    {
+      "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
+      "product": "BẠC THỎI PHÚ QUÝ 999 10 LƯỢNG, 5 LƯỢNG",
+      "unit": "Vnđ/Lượng",
+      "buy_price": "2,738,000",
+      "sell_price": "2,823,000"
+    },
+    {
+      "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
+      "product": "ĐỒNG BẠC MỸ NGHỆ PHÚ QUÝ 999",
+      "unit": "Vnđ/Lượng",
+      "buy_price": "2,738,000",
+      "sell_price": "3,221,000"
+    },
+    {
+      "category": "BẠC THƯƠNG HIỆU PHÚ QUÝ",
+      "product": "BẠC THỎI PHÚ QUÝ 999 1KILO",
+      "unit": "Vnđ/Kg",
+      "buy_price": "73,013,151",
+      "sell_price": "75,279,812"
+    },
+    {
+      "category": "BẠC THƯƠNG HIỆU KHÁC",
+      "product": "Bạc 999 trên 1500 lượng (miếng-thanh-thỏi)",
+      "unit": "Vnđ/Lượng",
+      "buy_price": "2,385,480",
+      "sell_price": "N/A"
+    },
+    {
+      "category": "BẠC THƯƠNG HIỆU KHÁC",
+      "product": "Bạc 999 dưới 1500 lượng  (miếng-thanh-thỏi)",
+      "unit": "Vnđ/Lượng",
+      "buy_price": "2,316,000",
+      "sell_price": "N/A"
+    }
+  ],
+  "success": true
+}
