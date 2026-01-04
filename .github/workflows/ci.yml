@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend-build:
+    name: Frontend build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: price-tracker-frontend/package-lock.json
+
+      - name: Install deps
+        run: npm -C price-tracker-frontend ci
+
+      - name: Build
+        run: npm -C price-tracker-frontend run build
+
+  python-syntax:
+    name: Python syntax (compileall)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Compile all (syntax check)
+        run: |
+          python -m compileall -q \
+            price-tracker-backend \
+            ui \
+            vn_gold_tracker \
+            silver_scraper \
+            international_metals \
+            Du_tru \
+            scripts \
+            download_wgc_gold_reserves.py
+
