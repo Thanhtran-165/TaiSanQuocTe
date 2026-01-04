@@ -29,7 +29,7 @@ Backend:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r price-tracker-backend/requirements.txt
-uvicorn price-tracker-backend.main:app --reload --port 8000
+python -m uvicorn main:app --app-dir price-tracker-backend --reload --port 8000
 ```
 
 Frontend:
@@ -47,7 +47,7 @@ Backend:
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r price-tracker-backend\requirements.txt
-python -m uvicorn price-tracker-backend.main:app --reload --port 8000
+python -m uvicorn main:app --app-dir price-tracker-backend --reload --port 8000
 ```
 
 Frontend:
@@ -73,3 +73,24 @@ WGC download có thể cần login + cookie.
 
 Xem `SECURITY.md`.
 
+## 🖥️ Auto-start khi mở máy (Local)
+
+### macOS (launchd)
+```bash
+bash scripts/install_autostart_macos.sh
+```
+Sau đó reboot / đăng xuất-đăng nhập, mở: `http://localhost:3000`
+
+Gỡ:
+```bash
+bash scripts/uninstall_autostart_macos.sh
+```
+
+### Windows (Task Scheduler)
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\install_autostart_windows.ps1
+```
+Gỡ:
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\uninstall_autostart_windows.ps1
+```
