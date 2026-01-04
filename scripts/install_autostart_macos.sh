@@ -18,57 +18,6 @@ mkdir -p "${PLIST_DIR}"
 BACKEND_PLIST="${PLIST_DIR}/${BACKEND_LABEL}.plist"
 FRONTEND_PLIST="${PLIST_DIR}/${FRONTEND_LABEL}.plist"
 
-write_plist() {
-  local label="$1"
-  local program="$2"
-  local stdout_path="$3"
-  local stderr_path="$4"
-  local env_backend_port="$5"
-  local env_frontend_port="$6"
-
-  cat > "${program}" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-  <dict>
-    <key>Label</key>
-    <string>${label}</string>
-
-    <key>WorkingDirectory</key>
-    <string>${ROOT_DIR}</string>
-
-    <key>ProgramArguments</key>
-    <array>
-      <string>/bin/bash</string>
-      <string>${ROOT_DIR}/scripts/$(basename "${program}" .plist | sed 's/^com\\.taisanquocte\\.//; s/$/.sh/')</string>
-    </array>
-
-    <key>RunAtLoad</key>
-    <true/>
-
-    <key>KeepAlive</key>
-    <true/>
-
-    <key>StandardOutPath</key>
-    <string>${stdout_path}</string>
-
-    <key>StandardErrorPath</key>
-    <string>${stderr_path}</string>
-
-    <key>EnvironmentVariables</key>
-    <dict>
-      <key>PATH</key>
-      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-      <key>BACKEND_PORT</key>
-      <string>${env_backend_port}</string>
-      <key>FRONTEND_PORT</key>
-      <string>${env_frontend_port}</string>
-    </dict>
-  </dict>
-</plist>
-EOF
-}
-
 # Write plists
 cat > "${BACKEND_PLIST}" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -156,4 +105,3 @@ echo "✅ Installed autostart (launchd)."
 echo "- Backend:  http://localhost:${BACKEND_PORT}/docs"
 echo "- Frontend: http://localhost:${FRONTEND_PORT}"
 echo "Logs: ${LOG_DIR}"
-
