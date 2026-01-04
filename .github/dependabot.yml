@@ -1,0 +1,110 @@
+version: 2
+updates:
+  # Frontend (Next.js)
+  - package-ecosystem: "npm"
+    directory: "/price-tracker-frontend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      frontend-deps:
+        patterns:
+          - "*"
+
+  # Backend (FastAPI)
+  - package-ecosystem: "pip"
+    directory: "/price-tracker-backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      backend-deps:
+        patterns:
+          - "*"
+
+  # Shared fetcher + history DB
+  - package-ecosystem: "pip"
+    directory: "/ui"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      ui-deps:
+        patterns:
+          - "*"
+
+  # VN gold module
+  - package-ecosystem: "pip"
+    directory: "/vn_gold_tracker"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      vn-gold-deps:
+        patterns:
+          - "*"
+
+  # Silver scraper
+  - package-ecosystem: "pip"
+    directory: "/silver_scraper"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      silver-deps:
+        patterns:
+          - "*"
+
+  # International metals
+  - package-ecosystem: "pip"
+    directory: "/international_metals"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    groups:
+      intl-deps:
+        patterns:
+          - "*"
+
+  # GitHub Actions
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Ho_Chi_Minh"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+
