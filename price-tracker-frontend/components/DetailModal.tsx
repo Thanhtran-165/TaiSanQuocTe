@@ -5,12 +5,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Search } from 'lucide-react';
-import { api } from '@/lib/api';
+import { api, HistoryData, PhuQuyItemHistoryRow, SjcItemHistoryRow } from '@/lib/api';
 
 interface DetailModalProps {
   isOpen: boolean;
   onClose: () => void;
-  type: 'sjc' | 'phuquy' | 'intl-gold' | 'intl-silver';
+  type: 'sjc' | 'phuquy' | 'intl-gold' | 'intl-silver' | 'paxg' | 'xaut';
   title: string;
   currentPrice: number | null;
 }
@@ -18,12 +18,12 @@ interface DetailModalProps {
 interface ProductItem {
   name?: string;
   product?: string;
-  branch?: string;
-  buy_price?: number;
-  sell_price?: number;
+  branch?: string | null;
+  buy_price?: number | null;
+  sell_price?: number | null;
   price?: number;
-  date?: string;
-  ts?: string;
+  date?: string | null;
+  ts?: string | null;
 }
 
 export default function DetailModal({
@@ -31,32 +31,44 @@ export default function DetailModal({
   onClose,
   type,
   title,
-  currentPrice,
+  currentPrice: _currentPrice,
 }: DetailModalProps) {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<ProductItem[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedItem, setSelectedItem] = useState<ProductItem | null>(null);
-  const [itemHistory, setItemHistory] = useState<any[]>([]);
+  const [itemHistory, setItemHistory] = useState<(SjcItemHistoryRow | PhuQuyItemHistoryRow)[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isOpen) return;
 
     const fetchProducts = async () => {
       setLoading(true);
+      setLoadError(null);
       try {
         let response;
 
         switch (type) {
           case 'sjc':
             response = await api.getSjcItems();
+            if (response?.success && (response.data?.length ?? 0) === 0) {
+              await api.getTodayPrices();
+              response = await api.getSjcItems();
+            }
             break;
           case 'phuquy':
             response = await api.getPhuQuyItems();
+            if (response?.success && (response.data?.length ?? 0) === 0) {
+              await api.getTodayPrices();
+              response = await api.getPhuQuyItems();
+            }
             break;
           case 'intl-gold':
           case 'intl-silver':
+          case 'paxg':
+          case 'xaut':
             // For international, we'll show summary data
             const histResponse = await api.getPriceHistory(30);
             if (histResponse.success && histResponse.data.length > 0) {
@@ -71,9 +83,26 @@ export default function DetailModal({
                 buy_price: latest.intl_silver_usd_oz,
                 date: latest.ts,
               };
+              const paxgData = {
+                name: 'PAXG',
+                buy_price: latest.paxg_usd_oz,
+                date: latest.ts,
+              };
+              const xautData = {
+                name: 'XAUT',
+                buy_price: latest.xaut_usd_oz,
+                date: latest.ts,
+              };
               response = {
                 success: true,
-                data: type === 'intl-gold' ? [goldData] : [silverData]
+                data:
+                  type === 'intl-gold'
+                    ? [goldData]
+                    : type === 'intl-silver'
+                      ? [silverData]
+                      : type === 'paxg'
+                        ? [paxgData]
+                        : [xautData],
               };
             }
             break;
@@ -84,6 +113,11 @@ export default function DetailModal({
         }
       } catch (error) {
         console.error('Error fetching products:', error);
+        const healthUrl =
+          typeof window !== 'undefined' ? `${window.location.origin}/api/health` : 'http://localhost:3000/api/health';
+        setLoadError(
+          `Không thể tải danh sách sản phẩm. Hãy đảm bảo backend đang chạy (vd: http://localhost:8000/docs) và thử mở ${healthUrl} để kiểm tra kết nối.`
+        );
       } finally {
         setLoading(false);
       }
@@ -102,9 +136,29 @@ export default function DetailModal({
       const itemName = item.name || item.product || '';
 
       if (type === 'sjc') {
-        historyResponse = await api.getSjcItemHistory(itemName, item.branch, 30);
+        historyResponse = await api.getSjcItemHistory(itemName, item.branch ?? undefined, 30);
       } else if (type === 'phuquy') {
         historyResponse = await api.getPhuQuyItemHistory(itemName, 30);
+      } else {
+        // Intl/tokenized: use general history endpoint and map to a series
+        const hist = await api.getPriceHistory(30);
+        if (hist.success) {
+          const series = (hist.data || [])
+            .map((r: HistoryData) => {
+              const v =
+                type === 'intl-gold'
+                  ? r.intl_gold_usd_oz
+                  : type === 'intl-silver'
+                    ? r.intl_silver_usd_oz
+                    : type === 'paxg'
+                      ? r.paxg_usd_oz ?? null
+                      : r.xaut_usd_oz ?? null;
+              return v === null || v === undefined ? null : { ts: r.ts, buy_price: v };
+            })
+            .filter((x): x is { ts: string; buy_price: number } => x !== null);
+          setItemHistory(series);
+          return;
+        }
       }
 
       if (historyResponse && historyResponse.success) {
@@ -124,12 +178,45 @@ export default function DetailModal({
 
   if (!isOpen) return null;
 
-  const formatPrice = (price: number | undefined) => {
+  const formatPrice = (price: number | null | undefined) => {
     if (price === null || price === undefined) return 'N/A';
-    if (type.includes('intl')) {
+    if (type.includes('intl') || type === 'paxg' || type === 'xaut') {
       return `$${price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     }
     return `${Number(price).toLocaleString()} VND`;
+  };
+
+  const calcDeltas = (history: (SjcItemHistoryRow | PhuQuyItemHistoryRow)[]) => {
+    const rows = (history || [])
+      .map((h) => ({ ts: h.ts, buy_price: h.buy_price, sell_price: h.sell_price }))
+      .filter((h) => typeof h.ts === 'string' && h.ts.length > 0)
+      .sort((a, b) => new Date(a.ts as string).getTime() - new Date(b.ts as string).getTime());
+
+    const latest = rows[rows.length - 1];
+    const prev = rows.length >= 2 ? rows[rows.length - 2] : undefined;
+    const latestDay = latest?.ts ? new Date(latest.ts).toISOString().slice(0, 10) : null;
+
+    let prevDay: typeof latest | undefined;
+    if (latestDay) {
+      for (let i = rows.length - 2; i >= 0; i--) {
+        const day = new Date(rows[i].ts as string).toISOString().slice(0, 10);
+        if (day !== latestDay) {
+          prevDay = rows[i];
+          break;
+        }
+      }
+    }
+
+    const delta = (cur?: number | null, past?: number | null) => {
+      if (cur === null || cur === undefined || past === null || past === undefined) return null;
+      if (past === 0) return { diff: cur - past, pct: null as number | null };
+      return { diff: cur - past, pct: ((cur - past) / past) * 100 };
+    };
+
+    return {
+      prev: delta(latest?.buy_price ?? null, prev?.buy_price ?? null),
+      prevDay: delta(latest?.buy_price ?? null, prevDay?.buy_price ?? null),
+    };
   };
 
   return (
@@ -140,12 +227,15 @@ export default function DetailModal({
           <div>
             <h2 className="text-2xl font-bold text-white">{title}</h2>
             <p className="text-white/60 text-sm mt-1">{filteredItems.length} sản phẩm</p>
+            {_currentPrice !== null && _currentPrice !== undefined && (
+              <p className="text-white/60 text-sm mt-1">Giá hiện tại: {formatPrice(_currentPrice)}</p>
+            )}
           </div>
           <button
             onClick={onClose}
             className="p-2 rounded-lg hover:bg-white/10 transition-colors"
           >
-            <X className="w-5 h-5 text-white/70" />
+            <X className="w-5 h-5 icon-arrow" />
           </button>
         </div>
 
@@ -190,6 +280,31 @@ export default function DetailModal({
                     </div>
                   )}
                 </div>
+
+                {(() => {
+                  const d = calcDeltas(itemHistory);
+                  if (!d.prev && !d.prevDay) return null;
+                  const renderDelta = (label: string, v: { diff: number; pct: number | null } | null) => {
+                    if (!v) return null;
+                    const cls = v.diff >= 0 ? 'text-green-300' : 'text-red-300';
+                    const pct = v.pct === null ? 'N/A' : `${v.pct >= 0 ? '+' : ''}${v.pct.toFixed(2)}%`;
+                    return (
+                      <div className="text-white/70 text-sm">
+                        {label}:{' '}
+                        <span className={`${cls} font-semibold`}>
+                          {v.diff >= 0 ? '+' : ''}
+                          {formatPrice(v.diff)} ({pct})
+                        </span>
+                      </div>
+                    );
+                  };
+                  return (
+                    <div className="mt-4 space-y-1">
+                      {renderDelta('So với lần trước', d.prev)}
+                      {renderDelta('So với ngày trước', d.prevDay)}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* History */}
@@ -231,9 +346,14 @@ export default function DetailModal({
             </div>
           ) : (
             <div>
+              {loadError && (
+                <div className="glass-card rounded-xl p-4 mb-4 border border-red-500/30">
+                  <div className="text-red-200 text-sm">{loadError}</div>
+                </div>
+              )}
               {/* Search Bar */}
               <div className="relative mb-6">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/50" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 icon-arrow" />
                 <input
                   type="text"
                   placeholder="Tìm kiếm sản phẩm..."

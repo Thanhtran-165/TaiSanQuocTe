@@ -1,0 +1,132 @@
+{
+  "project": {
+    "name": "World Bank Reserves vs Gold Dataset",
+    "date": "2026-01-03 22:01:42",
+    "execution_time": "3.1 seconds",
+    "status": "COMPLETE"
+  },
+  "dataset": {
+    "main_file": "reserves_gold_by_country_year.csv",
+    "records": 9305,
+    "columns": 7,
+    "economies": 181,
+    "year_range": {
+      "start": 1960,
+      "end": 2024,
+      "span": 65
+    },
+    "quality": {
+      "ok_records": 9305,
+      "negative_records": 0,
+      "pct_ok": 100.0
+    }
+  },
+  "coverage": {
+    "economies_with_total": 182,
+    "economies_with_non_gold": 182,
+    "economies_with_both": 182,
+    "avg_years_per_economy": 51.12637362637363,
+    "max_years": 65
+  },
+  "top_gold_holders_2024": [
+    {
+      "rank": 1,
+      "iso2": "US",
+      "country": "United States",
+      "gold_value_usd": 682276848452.7839
+    },
+    {
+      "rank": 2,
+      "iso2": "DE",
+      "country": "Germany",
+      "gold_value_usd": 281143570499.9995
+    },
+    {
+      "rank": 3,
+      "iso2": "IT",
+      "country": "Italy",
+      "gold_value_usd": 205672743899.9999
+    },
+    {
+      "rank": 4,
+      "iso2": "FR",
+      "country": "France",
+      "gold_value_usd": 204428203200.0001
+    },
+    {
+      "rank": 5,
+      "iso2": "CN",
+      "country": "China",
+      "gold_value_usd": 191220939000.0
+    },
+    {
+      "rank": 6,
+      "iso2": "CH",
+      "country": "Switzerland",
+      "gold_value_usd": 87235258500.0
+    },
+    {
+      "rank": 7,
+      "iso2": "IN",
+      "country": "India",
+      "gold_value_usd": 73498281120.22498
+    },
+    {
+      "rank": 8,
+      "iso2": "JP",
+      "country": "Japan",
+      "gold_value_usd": 70964599973.55005
+    },
+    {
+      "rank": 9,
+      "iso2": "TR",
+      "country": "Turkiye",
+      "gold_value_usd": 63915122700.00021
+    },
+    {
+      "rank": 10,
+      "iso2": "NL",
+      "country": "Netherlands",
+      "gold_value_usd": 51375788100.0
+    }
+  ],
+  "vietnam": {
+    "iso2": "VN",
+    "country": "Vietnam",
+    "first_year": 1995,
+    "last_year": 2024,
+    "n_years": 30,
+    "recent_data": [
+      {
+        "year": 2024,
+        "total_reserves_usd": 83081854928.1161,
+        "non_gold_reserves_usd": 83081854928.1161,
+        "gold_value_usd_inferred": 0.0
+      },
+      {
+        "year": 2023,
+        "total_reserves_usd": 92237540812.2468,
+        "non_gold_reserves_usd": 92237540812.2468,
+        "gold_value_usd_inferred": 0.0
+      },
+      {
+        "year": 2022,
+        "total_reserves_usd": 86539530966.6451,
+        "non_gold_reserves_usd": 86539530966.6451,
+        "gold_value_usd_inferred": 0.0
+      },
+      {
+        "year": 2021,
+        "total_reserves_usd": 109371353442.833,
+        "non_gold_reserves_usd": 109371353442.833,
+        "gold_value_usd_inferred": 0.0
+      },
+      {
+        "year": 2020,
+        "total_reserves_usd": 94833616150.4504,
+        "non_gold_reserves_usd": 94833616150.4504,
+        "gold_value_usd_inferred": 0.0
+      }
+    ]
+  }
+}

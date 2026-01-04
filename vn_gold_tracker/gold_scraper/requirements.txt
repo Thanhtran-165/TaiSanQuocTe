@@ -1,0 +1,8 @@
+pandas>=2.0.0
+openpyxl>=3.1.0
+
+# Database support
+psycopg2-binary>=2.9.0  # PostgreSQL (optional)
+
+# Auto scheduling
+schedule>=1.2.0

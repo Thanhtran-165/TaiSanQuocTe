@@ -18,6 +18,7 @@ interface PriceCardProps {
   onClick?: () => void;
   className?: string;
   iconClass?: string;
+  size?: 'md' | 'sm';
 }
 
 export default function PriceCard({
@@ -29,27 +30,35 @@ export default function PriceCard({
   onClick,
   className = '',
   iconClass = 'icon-glow',
+  size = 'md',
 }: PriceCardProps) {
   const changeColor = change && change.value >= 0 ? 'text-green-400' : 'text-red-400';
 
+  const padClass = size === 'sm' ? 'p-4' : 'p-5';
+  const iconSizeClass = size === 'sm' ? 'w-5 h-5' : 'w-6 h-6';
+  const titleClass = size === 'sm' ? 'text-xs' : 'text-sm';
+  const priceClass = size === 'sm' ? 'text-xl' : 'text-2xl';
+  const subtitleClass = size === 'sm' ? 'text-[11px]' : 'text-xs';
+  const changeClass = size === 'sm' ? 'text-[11px]' : 'text-xs';
+
   return (
     <div
-      className={`glass-card rounded-2xl p-5 cursor-pointer ${className}`}
+      className={`glass-card rounded-2xl ${padClass} cursor-pointer ${className}`}
       onClick={onClick}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Icon className={`w-6 h-6 ${iconClass}`} />
-          <h3 className="text-sm font-semibold text-white/90">{title}</h3>
+          <Icon className={`${iconSizeClass} ${iconClass}`} />
+          <h3 className={`${titleClass} font-semibold text-white/90`}>{title}</h3>
         </div>
       </div>
 
       <div className="space-y-1">
-        <div className="text-2xl font-bold text-white">{price}</div>
-        <div className="text-xs text-white/70">{subtitle}</div>
+        <div className={`${priceClass} font-bold text-white`}>{price}</div>
+        <div className={`${subtitleClass} text-white/70`}>{subtitle}</div>
 
         {change && (
-          <div className={`text-xs font-semibold ${changeColor} mt-1`}>
+          <div className={`${changeClass} font-semibold ${changeColor} mt-1`}>
             {change.value >= 0 ? '+' : ''}
             {change.value.toFixed(2)} ({change.percent >= 0 ? '+' : ''}
             {change.percent.toFixed(2)}%)

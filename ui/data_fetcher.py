@@ -14,6 +14,7 @@ import re
 import unicodedata
 import json
 import time
+import requests
 
 # Get the parent directory of ui (Word Asset folder)
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -79,6 +80,7 @@ class PriceDataFetcher:
     OZ_TO_LUONG = OZ_TO_GRAM / LUONG_TO_GRAM  # 0.82942666...
     LUONG_TO_OZ = LUONG_TO_GRAM / OZ_TO_GRAM  # 1.20565070...
     KG_TO_OZ = KG_TO_GRAM / OZ_TO_GRAM  # 32.1507466...
+    KG_TO_LUONG = KG_TO_GRAM / LUONG_TO_GRAM  # 26.6666666...
 
     def __init__(self):
         """Initialize all data fetchers"""
@@ -100,6 +102,8 @@ class PriceDataFetcher:
         self._last_good_intl_at = {"gold": None, "silver": None}
         self._intl_disk_cache_path = os.path.join(current_dir, ".intl_cache.json")
         self._load_intl_disk_cache()
+        self._token_cache: Dict = {}
+        self._token_last_fetch: Optional[datetime] = None
         self._history_db_path = os.path.join(current_dir, "price_history.db")
         self._init_history_db()
 
@@ -125,6 +129,10 @@ class PriceDataFetcher:
                     intl_gold_source TEXT,
                     intl_silver_usd_oz REAL,
                     intl_silver_source TEXT,
+                    paxg_usd_oz REAL,
+                    paxg_source TEXT,
+                    xaut_usd_oz REAL,
+                    xaut_source TEXT,
                     gold_spread_vnd REAL,
                     gold_spread_percent REAL,
                     gold_intl_vnd_per_luong REAL,
@@ -175,6 +183,16 @@ class PriceDataFetcher:
             conn.execute(
                 "CREATE INDEX IF NOT EXISTS idx_price_snapshots_created_at ON price_snapshots(created_at DESC)"
             )
+            # Lightweight migrations for existing DBs
+            cols = {r[1] for r in conn.execute("PRAGMA table_info(price_snapshots)").fetchall()}
+            for name, sql_type in [
+                ("paxg_usd_oz", "REAL"),
+                ("paxg_source", "TEXT"),
+                ("xaut_usd_oz", "REAL"),
+                ("xaut_source", "TEXT"),
+            ]:
+                if name not in cols:
+                    conn.execute(f"ALTER TABLE price_snapshots ADD COLUMN {name} {sql_type}")
             conn.commit()
             conn.close()
         except Exception:
@@ -193,6 +211,8 @@ class PriceDataFetcher:
 
             intl_gold = (result.get("international") or {}).get("gold") or {}
             intl_silver = (result.get("international") or {}).get("silver") or {}
+            paxg = (result.get("tokenized") or {}).get("paxg") or {}
+            xaut = (result.get("tokenized") or {}).get("xaut") or {}
 
             gold_spread = (result.get("spreads") or {}).get("gold") or {}
             silver_spread = (result.get("spreads") or {}).get("silver") or {}
@@ -206,9 +226,11 @@ class PriceDataFetcher:
                     phuquy_silver_vnd, phuquy_silver_unit,
                     intl_gold_usd_oz, intl_gold_source,
                     intl_silver_usd_oz, intl_silver_source,
+                    paxg_usd_oz, paxg_source,
+                    xaut_usd_oz, xaut_source,
                     gold_spread_vnd, gold_spread_percent, gold_intl_vnd_per_luong,
                     silver_spread_vnd, silver_spread_percent, silver_intl_vnd_per_unit, silver_spread_unit
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     ts,
@@ -221,6 +243,10 @@ class PriceDataFetcher:
                     intl_gold.get("source"),
                     intl_silver.get("price"),
                     intl_silver.get("source"),
+                    paxg.get("price"),
+                    paxg.get("source"),
+                    xaut.get("price"),
+                    xaut.get("source"),
                     gold_spread.get("spread_vnd"),
                     gold_spread.get("spread_percent"),
                     gold_spread.get("intl_per_luong"),
@@ -629,6 +655,21 @@ class PriceDataFetcher:
 
     def fetch_international_prices(self) -> Dict:
         """Fetch international gold and silver prices"""
+        def _normalize_stooq(metal: str, payload: Optional[Dict]) -> Optional[Dict]:
+            if not isinstance(payload, dict):
+                return payload
+            source = str(payload.get("source") or "")
+            price = payload.get("price")
+            if metal == "silver" and "STOOQ" in source.upper() and isinstance(price, (int, float)) and price > 1000:
+                scale = 0.01
+                out = dict(payload)
+                for k in ["price", "change", "high", "low"]:
+                    v = out.get(k)
+                    if isinstance(v, (int, float)):
+                        out[k] = v * scale
+                return out
+            return payload
+
         # If intl fetcher isn't available, fall back to last-known-good disk cache.
         if not self.intl_fetcher:
             now = datetime.now()
@@ -643,22 +684,22 @@ class PriceDataFetcher:
                 if (now - self._last_good_intl_at["silver"]).total_seconds() <= max_age_seconds:
                     silver_price = dict(self._last_good_intl["silver"])
                     silver_price["source"] = f"{silver_price.get('source', 'cached')} (cached)"
-            return {"gold": gold_price, "silver": silver_price}
+            return {"gold": _normalize_stooq("gold", gold_price), "silver": _normalize_stooq("silver", silver_price)}
 
         if self.intl_fetcher:
             try:
                 # Use a single call to reduce flakiness and share MSN state/cache.
                 prices = self.intl_fetcher.get_all_prices(use_cache=True)
-                gold_price = prices.get("gold")
-                silver_price = prices.get("silver")
+                gold_price = _normalize_stooq("gold", prices.get("gold"))
+                silver_price = _normalize_stooq("silver", prices.get("silver"))
 
                 # If both are missing, do a few short retries (MSN SSR can be flaky).
                 if gold_price is None and silver_price is None:
                     for attempt in range(5):
                         time.sleep(0.25 * (attempt + 1))
                         prices = self.intl_fetcher.get_all_prices(use_cache=False)
-                        gold_price = prices.get("gold")
-                        silver_price = prices.get("silver")
+                        gold_price = _normalize_stooq("gold", prices.get("gold"))
+                        silver_price = _normalize_stooq("silver", prices.get("silver"))
                         if gold_price is not None or silver_price is not None:
                             break
 
@@ -691,10 +732,51 @@ class PriceDataFetcher:
                         silver_price = dict(self._last_good_intl["silver"])
                         silver_price["source"] = f"{silver_price.get('source', 'MSN Money')} (cached)"
 
-                return {"gold": gold_price, "silver": silver_price}
+                return {"gold": _normalize_stooq("gold", gold_price), "silver": _normalize_stooq("silver", silver_price)}
             except Exception as e:
                 print(f"Error fetching international prices: {e}")
         return {'gold': None, 'silver': None}
+
+    def fetch_tokenized_gold_prices(self) -> Dict:
+        """
+        Fetch tokenized gold prices (PAXG, XAUT) in USD/oz.
+        Source: CryptoCompare.
+        """
+        now = datetime.now()
+        if self._token_last_fetch and (now - self._token_last_fetch).total_seconds() < 300 and self._token_cache:
+            return dict(self._token_cache)
+
+        url = "https://min-api.cryptocompare.com/data/pricemultifull"
+        params = {"fsyms": "PAXG,XAUT", "tsyms": "USD"}
+        try:
+            resp = requests.get(url, params=params, timeout=20)
+            resp.raise_for_status()
+            payload = resp.json()
+            raw = (payload.get("RAW") or {})
+
+            def _one(sym: str):
+                usd = ((raw.get(sym) or {}).get("USD") or {})
+                price = usd.get("PRICE")
+                change = usd.get("CHANGE24HOUR")
+                change_pct = usd.get("CHANGEPCT24HOUR")
+                if not isinstance(price, (int, float)):
+                    return None
+                return {
+                    "source": "CryptoCompare",
+                    "symbol": sym,
+                    "price": round(float(price), 2),
+                    "change": round(float(change), 2) if isinstance(change, (int, float)) else None,
+                    "change_percent": round(float(change_pct), 2) if isinstance(change_pct, (int, float)) else None,
+                    "unit": "USD/oz",
+                    "timestamp": now.isoformat(),
+                }
+
+            out = {"paxg": _one("PAXG"), "xaut": _one("XAUT")}
+            self._token_cache = out
+            self._token_last_fetch = now
+            return out
+        except Exception:
+            return {"paxg": None, "xaut": None}
 
     def calculate_gold_spread(self, sjc_price: float, intl_price: float, usd_vnd: float) -> Dict:
         """
@@ -784,6 +866,7 @@ class PriceDataFetcher:
         sjc_data = self.fetch_sjc_gold()
         phuquy_data = self.fetch_phuquy_silver()
         intl_data = self.fetch_international_prices()
+        token_data = self.fetch_tokenized_gold_prices()
 
         # Extract relevant prices
         sjc_price = None
@@ -791,9 +874,12 @@ class PriceDataFetcher:
             # Get SJC price (vàng miếng)
             for item in sjc_data:
                 name = item.get('name', '') or ''
-                buy_price = item.get('buy_price')
-                if 'SJC' in self._norm_text(name) and buy_price:
-                    parsed = self._to_float(buy_price)
+                # Prefer sell price for UI display
+                sell_price = item.get('sell_price') or item.get('sell')
+                buy_price = item.get('buy_price') or item.get('buy')
+                candidate = sell_price or buy_price
+                if 'SJC' in self._norm_text(name) and candidate:
+                    parsed = self._to_float(candidate)
                     if parsed is not None:
                         sjc_price = parsed
                         break
@@ -804,31 +890,37 @@ class PriceDataFetcher:
         phuquy_price = None
         phuquy_unit = None
         if phuquy_data and 'prices' in phuquy_data:
-            # Prefer: BẠC THỎI PHÚ QUÝ 999 1KILO (bullion, closer to gold bar)
-            for item in phuquy_data['prices']:
-                name = item.get('type', '') or item.get('product', '') or ""
-                unit = item.get("unit") or ""
-                buy_price = item.get('buy') or item.get('buy_price')
+            # Standardize display unit to VND/lượng for consistency with gold.
+            # Prefer: 1 lượng product; fallback: convert 1kg to per-lượng.
+            raw_unit = None
 
-                if "BAC THOI PHU QUY 999 1KILO" in self._norm_text(name) and buy_price:
-                    parsed = self._to_float(buy_price)
-                    if parsed is not None:
-                        phuquy_price = parsed
-                        phuquy_unit = unit
-                        break
-
-            # Fallback: previous 1 lượng product if 1kg is missing
-            if phuquy_price is None:
+            def _pick_price(match_norm: str):
                 for item in phuquy_data['prices']:
                     name = item.get('type', '') or item.get('product', '') or ""
                     unit = item.get("unit") or ""
+                    # Prefer sell price for UI display
+                    sell_price = item.get('sell') or item.get('sell_price')
                     buy_price = item.get('buy') or item.get('buy_price')
-                    if 'BAC MIENG PHU QUY 999 1 LUONG' in self._norm_text(name) and buy_price:
-                        parsed = self._to_float(buy_price)
+                    candidate = sell_price or buy_price
+                    if match_norm in self._norm_text(name) and candidate:
+                        parsed = self._to_float(candidate)
                         if parsed is not None:
-                            phuquy_price = parsed
-                            phuquy_unit = unit
-                            break
+                            return parsed, unit
+                return None, None
+
+            # 1) Prefer 1 lượng
+            phuquy_price, raw_unit = _pick_price("BAC MIENG PHU QUY 999 1 LUONG")
+
+            # 2) Fallback: 1kg -> convert to per lượng
+            if phuquy_price is None:
+                kg_price, raw_unit = _pick_price("BAC THOI PHU QUY 999 1KILO")
+                if kg_price is not None:
+                    phuquy_price = kg_price / self.KG_TO_LUONG
+
+            if phuquy_price is not None:
+                phuquy_unit = "VND/lượng"
+            else:
+                phuquy_unit = None
 
         intl_gold_price = intl_data.get('gold', {}).get('price') if intl_data.get('gold') else None
         intl_silver_price = intl_data.get('silver', {}).get('price') if intl_data.get('silver') else None
@@ -858,6 +950,7 @@ class PriceDataFetcher:
                 'gold': intl_data.get('gold'),
                 'silver': intl_data.get('silver')
             },
+            'tokenized': token_data,
             'spreads': {
                 'gold': gold_spread,
                 'silver': silver_spread
@@ -881,6 +974,8 @@ class PriceDataFetcher:
         data = self.fetch_all_data()
         intl_gold = data["international"]["gold"] if data.get("international") else None
         intl_silver = data["international"]["silver"] if data.get("international") else None
+        paxg = (data.get("tokenized") or {}).get("paxg")
+        xaut = (data.get("tokenized") or {}).get("xaut")
 
         return {
             'update_time': data['timestamp'],
@@ -898,7 +993,7 @@ class PriceDataFetcher:
             # Silver (Phu Quý)
             'phuquy_silver': {
                 'price': data['phuquy_silver']['price'],
-                'unit': self._normalize_vn_unit(data['phuquy_silver']['unit']) or 'VND/lượng',
+                'unit': 'VND/lượng',
                 'source': 'Phú Quý'
             },
 
@@ -920,6 +1015,22 @@ class PriceDataFetcher:
                 'source': intl_silver.get('source') if intl_silver else None
             },
 
+            # Tokenized Gold (PAXG/XAUT)
+            'paxg': {
+                'price': paxg['price'] if isinstance(paxg, dict) else None,
+                'change': paxg.get('change') if isinstance(paxg, dict) else None,
+                'change_percent': paxg.get('change_percent') if isinstance(paxg, dict) else None,
+                'unit': 'USD/oz',
+                'source': paxg.get('source') if isinstance(paxg, dict) else None
+            },
+            'xaut': {
+                'price': xaut['price'] if isinstance(xaut, dict) else None,
+                'change': xaut.get('change') if isinstance(xaut, dict) else None,
+                'change_percent': xaut.get('change_percent') if isinstance(xaut, dict) else None,
+                'unit': 'USD/oz',
+                'source': xaut.get('source') if isinstance(xaut, dict) else None
+            },
+
             # Spreads
             'gold_spread': {
                 'spread_vnd': data['spreads']['gold'].get('spread_vnd'),
@@ -933,7 +1044,7 @@ class PriceDataFetcher:
                 'spread_percent': data['spreads']['silver'].get('spread_percent'),
                 'intl_in_vnd': data['spreads']['silver'].get('intl_in_vnd'),
                 'intl_per_luong': data['spreads']['silver'].get('intl_per_luong'),
-                'unit': self._normalize_vn_unit(data['phuquy_silver'].get('unit')) or 'VND/lượng',
+                'unit': 'VND/lượng',
             }
         }
 

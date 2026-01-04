@@ -6,7 +6,7 @@
 import React from 'react';
 
 interface TabsProps {
-  tabs: { id: string; label: string; icon: string }[];
+  tabs: { id: string; label: string; icon?: React.ReactNode }[];
   activeTab: string;
   onChange: (tabId: string) => void;
 }
@@ -27,7 +27,7 @@ export default function Tabs({ tabs, activeTab, onChange }: TabsProps) {
             }
           `}
         >
-          <span className="mr-2">{tab.icon}</span>
+          {tab.icon ? <span className="mr-2 inline-flex align-middle">{tab.icon}</span> : null}
           {tab.label}
         </button>
       ))}

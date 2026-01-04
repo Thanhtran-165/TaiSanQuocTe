@@ -35,11 +35,17 @@ out/
 *.swo
 *~
 .DS_Store
+.secrets/
+.claude/
+.venv*/
 
 # Database files
 *.db
 *.sqlite
 *.sqlite3
+*.xlsx
+*.xls
+*.parquet
 
 # Environment files
 .env
@@ -56,3 +62,17 @@ out/
 # OS files
 Thumbs.db
 .DS_Store
+
+# Data directories (WGC output, reserves data, etc.)
+data_wgc/
+vn_gold_tracker/gold_scraper/output/
+ui/.intl_cache.json
+price-tracker-frontend/.next_old_*/
+
+# Reserves datasets (generated)
+Du_tru/*.csv
+Du_tru/*.parquet
+
+# CSV data files
+*_reserves*.csv
+wgc_*.csv

@@ -361,6 +361,15 @@ class PreciousMetalsPrice:
             low_f = float(low_v) if low_v and low_v.upper() != "N/A" else close_f
             vol_i = int(float(volume_v)) if volume_v and volume_v.upper() != "N/A" else 0
 
+            # Stooq's SI.F data is commonly quoted in cents, while GC.F is in USD.
+            # Normalize silver to USD/oz for consistency across sources.
+            if metal == "silver" and close_f > 1000:
+                scale = 0.01
+                close_f *= scale
+                open_f *= scale
+                high_f *= scale
+                low_f *= scale
+
             change = close_f - open_f
             change_percent = (change / open_f) * 100 if open_f else 0.0
 

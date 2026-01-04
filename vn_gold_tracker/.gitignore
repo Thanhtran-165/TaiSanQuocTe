@@ -1,0 +1,68 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Cache directories
+gold_data_cache/
+my_gold_data/
+*.log
+
+# Output directories
+gold_scraper/output/
+silver_scraper/output/
+
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Excel files
+*.xlsx
+*.xls
+
+# CSV data files (nếu không muốn commit data)
+*.csv
+!requirements.txt
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pytest
+.pytest_cache/
+.coverage
+htmlcov/
